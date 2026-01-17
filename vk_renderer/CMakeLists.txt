@@ -24,14 +24,18 @@ if(UNIX OR APPLE)
     target_compile_definitions(${TARGET} PUBLIC 
         VK_ENABLE_BETA_EXTENSIONS=1
         VK_USE_PLATFORM_METAL_EXT=1
-        VK_RENDERER_USE_GLFW=1
     )
 endif()
 
 if(APPLE AND NOT IOS)
-    target_link_libraries(${TARGET} PRIVATE
+    find_package(Vulkan REQUIRED)
+    target_link_libraries(${TARGET} PUBLIC
         imgui
         glfw
+        Vulkan::Vulkan
+    )
+    target_compile_definitions(${TARGET} PUBLIC
+        VK_RENDERER_USE_GLFW=1
     )
 endif()
 
@@ -87,7 +91,7 @@ set_target_properties(MoltenVK::MoltenVK PROPERTIES IMPORTED_LOCATION "${MOLTENV
 
 # Link MoltenVK + common Apple frameworks MoltenVK relies on
 target_link_libraries(${TARGET} PUBLIC
-    MoltenVK::MoltenVK
+    # MoltenVK::MoltenVK # THIS CAUSES ERROR????? idk man
     "-framework Foundation"
     "-framework QuartzCore"
     "-framework Metal"

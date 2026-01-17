@@ -192,6 +192,12 @@ void VulkanRenderer::createInstanceForGlfw( void* glfwWindow )
     GLFWwindow* window = reinterpret_cast<GLFWwindow*>( glfwWindow );
     (void)window;
 
+    if (!glfwVulkanSupported())
+    {
+        std::fprintf(stderr, "GLFW says Vulkan is NOT supported (loader not found).\n");
+        std::abort();
+    }
+
     uint32_t glfwExtCount = 0;
     const char** glfwExts = glfwGetRequiredInstanceExtensions( &glfwExtCount );
     if( !glfwExts || glfwExtCount == 0 )

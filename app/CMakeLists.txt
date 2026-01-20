@@ -1,30 +1,23 @@
 # --- Executable ---
 
-set(TARGET "app")
-add_executable(${TARGET} MACOSX_BUNDLE)
-
-target_link_libraries(${TARGET} PRIVATE
-    vk_renderer
-)
-
-if(APPLE AND NOT IOS)
+if(APPLE)
     include(FetchContent)
 
-    # GLFW
     FetchContent_Declare(glfw
         GIT_REPOSITORY https://github.com/glfw/glfw.git
         GIT_TAG 3.3.10
     )
-    set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-    set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(glfw)
 
-    # Dear ImGui (no official CMakeLists in the repo; we build a target ourselves)
     FetchContent_Declare(imgui
         GIT_REPOSITORY https://github.com/ocornut/imgui.git
         GIT_TAG v1.90.9
     )
+
+    set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+    set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    
+    FetchContent_MakeAvailable(glfw)
     FetchContent_MakeAvailable(imgui)
 
     add_library(imgui STATIC
@@ -46,31 +39,64 @@ if(APPLE AND NOT IOS)
         vk_renderer
     )
 
-    add_executable(macos_imgui
-        src/macos_imgui/main.cpp
-    )
-
-    target_link_libraries(macos_imgui PRIVATE
+    set(TARGET "macos_app")
+    add_executable(${TARGET})
+    target_link_libraries(${TARGET} PRIVATE
         vk_renderer
         imgui
         glfw
     )
+elseif(IOS)
+    set(TARGET "ios_app")
+    add_executable(${TARGET} MACOSX_BUNDLE)
+    target_link_libraries(${TARGET} PRIVATE
+        vk_renderer
+    )
+else()
+    list(APPEND CMAKE_PREFIX_PATH "$ENV{HOME}/Qt/6.10.1/gcc_64") # To find Qt6
 
-    target_compile_features(macos_imgui PRIVATE cxx_std_20)
+    find_package(Qt6 REQUIRED COMPONENTS
+        Widgets
+        Quick
+        Qml
+    )
+    
+    set(CMAKE_AUTORCC ON)
+    set(CMAKE_AUTOUIC ON)
+    set(CMAKE_AUTOMOC ON)
+    set(TARGET "qt_app")
+    file(GLOB_RECURSE QML_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.qml")
+    file(GLOB_RECURSE SVG_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.svg")
+    qt6_standard_project_setup(REQUIRES 6.10)
+    qt6_add_executable(${TARGET})
+    qt6_add_qml_module(${TARGET}
+        URI app
+        QML_FILES 
+            ${QML_FILES}
+        RESOURCES
+            ${SVG_FILES}
+    )
+    target_link_libraries(${TARGET} PRIVATE
+        Qt6::Widgets
+        Qt6::Quick
+        Qt6::Qml
+    )
 endif()
-
 
 # --- Sources ---
 
-# Pick platform entrypoint
-if(IOS)
-    file(GLOB_RECURSE OBJCXX_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/ios/*.mm")
-    file(GLOB_RECURSE CXX_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/ios/*.cpp")
-    file(GLOB_RECURSE CXX_PRIVATE_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/macos/*.hpp")
-elseif(APPLE)
+if(APPLE)
     file(GLOB_RECURSE OBJCXX_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/macos/*.mm")
     file(GLOB_RECURSE CXX_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/macos/*.cpp")
     file(GLOB_RECURSE CXX_PRIVATE_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/macos/*.hpp")
+elseif(IOS)
+    file(GLOB_RECURSE OBJCXX_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/ios/*.mm")
+    file(GLOB_RECURSE CXX_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/ios/*.cpp")
+    file(GLOB_RECURSE CXX_PRIVATE_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/ios/*.hpp")
+else()
+    file(GLOB_RECURSE OBJCXX_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/qt/*.mm")
+    file(GLOB_RECURSE CXX_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/qt/*.cpp")
+    file(GLOB_RECURSE CXX_PRIVATE_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/qt/*.hpp")
 endif()
 
 target_sources(${TARGET} PRIVATE
@@ -94,6 +120,7 @@ endif()
 # --- Platform frameworks and Xcode settings ---
 
 if(IOS)
+    # TODO: all IOS stuff needs work
     target_link_libraries(${TARGET} PRIVATE
         "-framework UIKit"
     )
@@ -106,7 +133,7 @@ if(IOS)
     )
 elseif(APPLE)
     target_link_libraries(${TARGET} PRIVATE
-        "-framework Cocoa"
+        "-framework Cocoa" # TODO: is this needed?
     )
 
     set_target_properties(${TARGET} PROPERTIES

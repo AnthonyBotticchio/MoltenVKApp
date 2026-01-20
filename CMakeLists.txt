@@ -4,10 +4,6 @@ cmake_minimum_required(VERSION 3.28)
 
 project(MoltenVKApp LANGUAGES CXX OBJCXX)
 
-if(NOT APPLE AND NOT IOS)
-    message(FATAL_ERROR "This sample is intended to be built on APPLE or IOS with the provided toolchain file.") # For now
-endif()
-
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -37,5 +33,8 @@ cmake_format(cmake-format ${CM_FILES})
 
 # --- Subdirs ---
 
-add_subdirectory(vk_renderer)
+if(APPLE OR IOS)
+    add_subdirectory(vk_renderer)
+endif()
+
 add_subdirectory(app)
